@@ -18,7 +18,7 @@ API Creator es un generador de APIs simple. Permite crear de forma sencilla una 
 
 ## Uso
 
-1. Define los endpoints que deseas.
+1. Define los endpoints que deseas. Clave de acceso "admin" - "toor" por defecto.
 2. Selecciona los tipos MIME de entrada y salida de datos.
 3. Decide si usarás scripts PHP para conectarte a una base de datos externa.
 4. (Opcional) Define la lógica de respuesta directamente sin Scripts PHP, si es una API simple.
@@ -33,5 +33,5 @@ Puedes consultarla en: https://www.gnu.org/licenses/gpl-3.0.html
 
 ## Autor
 
-**Francisco José Serrano Rey**  
+**Francisco José Serrano Rey, 2025**
 📧 Contacto: fjsrey@gmail.com

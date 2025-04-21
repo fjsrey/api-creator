@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteBase /apicreator/
+
+# Si el archivo o directorio existe físicamente, no aplicar reglas
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Solo redirigir si empieza por "api/" y no existe como archivo
+RewriteRule ^api(/.*)?$ router.php [QSA,L]
