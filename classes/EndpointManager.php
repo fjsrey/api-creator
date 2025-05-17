@@ -1,6 +1,7 @@
 <?php
 // Control de la sesión
 if(!isset($deactivateSessionControl)) {
+    // No usamos sesión al llamar desde la API
     require_once "./session_control.php";
 }
 
@@ -13,6 +14,7 @@ class EndpointManager {
         include_once "./connection.php";
         global $pdoApiCreator;
         global $databaseFile;
+        global $deactivateSessionControl; // No usamos sesión al llamar desde la API
 
         // Clase necesaria
         include_once "Endpoint.php";
@@ -20,8 +22,24 @@ class EndpointManager {
         // Consulta para obtener todos los registros de la tabla endpoints
         try {
             $pdoApiCreator = getDatabaseConnection($databaseFile);
-            $query = "SELECT * FROM endpoints";    
-            $stmt = $pdoApiCreator->prepare($query);
+            $query = "SELECT * FROM endpoints";
+
+            // Si el usuario logado no es de tipo ADMIN mostramos los schemas del usuario solo
+            if(isset($deactivateSessionControl)) {
+                $stmt = $pdoApiCreator->prepare($query);
+            } else {
+                if($_SESSION['admin_user']!=1) {
+                    $query = $query." WHERE user_id = :userId";
+                }
+
+                $stmt = $pdoApiCreator->prepare($query);
+                $userId = intval($_SESSION['user_id']);
+
+                if($_SESSION['admin_user']!=1) {
+                    $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+                }
+            }
+
             $stmt->execute();
 
             // Crear un array para almacenar los registros
@@ -30,8 +48,9 @@ class EndpointManager {
             // Recorrer los resultados y añadirlos al array
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 if($scheme!="") {
+                    $userId = $row['user_id'];
                     $row['url'] = '/'.$row['scheme'].$row['url'];
-                    $row['script'] = '/endpoints/'.$row['scheme'].'/'.$row['script'];
+                    $row['script'] = '/endpoints/'.$userId.'/'.$row['scheme'].'/'.$row['script'];
                     $row['return_text'] = $row['return_text'];
                 }
                 $endpointsData[] = $row;
@@ -57,12 +76,29 @@ class EndpointManager {
         include_once "./connection.php";
         global $pdoApiCreator;
         global $databaseFile;
+        global $deactivateSessionControl; // No usamos sesión al llamar desde la API
 
         // Consulta para obtener todos los registros de la tabla endpoints
         try {
             $pdoApiCreator = getDatabaseConnection($databaseFile);
             $query = "SELECT distinct(scheme) FROM endpoints";
-            $stmt = $pdoApiCreator->prepare($query);
+
+            // Si el usuario logado no es de tipo ADMIN mostramos los schemas del usuario solo
+            if(isset($deactivateSessionControl)) {
+                $stmt = $pdoApiCreator->prepare($query);
+            } else {
+                if($_SESSION['admin_user']!=1) {
+                    $query = $query." WHERE user_id = :userId";
+                }
+
+                $stmt = $pdoApiCreator->prepare($query);            
+                $userId = intval($_SESSION['user_id']);
+
+                if($_SESSION['admin_user']!=1) {
+                    $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+                }
+            }
+
             $stmt->execute();
 
             // Crear un array para almacenar los registros
@@ -123,6 +159,7 @@ class EndpointManager {
         }
     }
 
+
     public function saveEndpoint($endpoint) {
         global $error;
         global $success;
@@ -138,8 +175,8 @@ class EndpointManager {
 
         try {
             $pdoApiCreator = getDatabaseConnection($databaseFile);
-            $sql = "INSERT INTO endpoints(url, method, input_mime, output_mime, script, return_text, scheme) 
-                    VALUES (:url, :method, :input, :output, :script, :return_text, :scheme)";
+            $sql = "INSERT INTO endpoints(url, method, input_mime, output_mime, script, return_text, scheme, user_id, status) 
+                    VALUES (:url, :method, :input, :output, :script, :return_text, :scheme, :user_id, :status)";
             
             $url         = $endpoint->getUrl();
             $method      = $endpoint->getMethod();
@@ -148,6 +185,8 @@ class EndpointManager {
             $script      = $endpoint->getScript();
             $return_text = $endpoint->getReturnText();
             $scheme      = $endpoint->getScheme();
+            $userId      = $_SESSION['user_id'];
+            $status      = $endpoint->getStatus();
 
             $stmt = $pdoApiCreator->prepare($sql);
             $stmt->bindParam(':url',    $url);
@@ -157,6 +196,8 @@ class EndpointManager {
             $stmt->bindParam(':script', $script);
             $stmt->bindParam(':return_text', $return_text);
             $stmt->bindParam(':scheme', $scheme);
+            $stmt->bindParam(':user_id', $userId);
+            $stmt->bindParam(':status', $status);
             $stmt->execute();
 
             $success = $success." Endpoint registrado correctamente.";
@@ -193,7 +234,7 @@ class EndpointManager {
 
         try {
             $pdoApiCreator = getDatabaseConnection($databaseFile);
-            $sql = "UPDATE endpoints SET url = :url, method = :method, input_mime = :input, output_mime = :output ".($endpoint->getScript() != null ? ", script = :script" : "").", return_text = :return_text, scheme = :scheme WHERE ID = :id";
+            $sql = "UPDATE endpoints SET url = :url, method = :method, input_mime = :input, output_mime = :output ".($endpoint->getScript() != null ? ", script = :script" : "").", return_text = :return_text, scheme = :scheme, status = :status WHERE ID = :id";
 
             // $error = $sql; // Depuración
 
@@ -211,6 +252,7 @@ class EndpointManager {
             }
 
             $scheme      = $endpoint->getScheme();
+            $status      = $endpoint->getStatus();
 
             $stmt = $pdoApiCreator->prepare($sql);
             $stmt->bindParam(':id',     $id);
@@ -226,6 +268,7 @@ class EndpointManager {
             
             $stmt->bindParam(':return_text', $return_text);
             $stmt->bindParam(':scheme', $scheme);
+            $stmt->bindParam(':status', $status);
             $stmt->execute();
 
             $success = $success." Endpoint modificado correctamente.";

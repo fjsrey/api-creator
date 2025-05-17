@@ -32,7 +32,11 @@ try {
 
     if(!isset($registro['return_text'])) {
         $registro['return_text'] = "";
-    } 
+    }
+    
+    if(!isset($registro['status'])) {
+        $registro['status'] = "";
+    }
 
     if (!$registro) {
         echo json_encode(['success' => false, 'error' => 'No encontrado']);

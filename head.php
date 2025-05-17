@@ -1,5 +1,6 @@
 <?php
 // public/index.php
+require_once "./vars.php";
 require_once './router.php';
 
 

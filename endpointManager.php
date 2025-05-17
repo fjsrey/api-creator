@@ -22,15 +22,18 @@ $outputMime = null;
 $scheme     = null;
 $returnText = null;
 $scriptName = null;
+$status     = null;
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if(isset($_POST['mode'])) {
         $mode = $_POST['mode'];
     }
 
-    if ( !isset($_POST['url'], $_POST['method'], $_POST['inputMime'], $_POST['outputMime'], $_POST['scheme']) || (!isset($_FILES['script']) && !isset($_POST['returntext'])) || ($mode==$EDIT && !isset($_POST['id'])) ) {
+    if ( !isset($_POST['url'], $_POST['method'], $_POST['inputMime'], $_POST['outputMime'], $_POST['scheme'], $_POST['status']) || (!isset($_FILES['script']) && !isset($_POST['returntext'])) || ($mode==$EDIT && !isset($_POST['id'])) ) {
         $error = "Todos los campos son obligatorios. Debe escoger un script PHP o indicar un texto a devolver.";
     } else {
+        $userId = $_SESSION['user_id'];
+
         if($mode==$EDIT) {
             $id = $_POST['id'];
         }
@@ -49,8 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         $scriptPath = $scriptName;
 
+        $status = $_POST['status'];
+
         // Ruta desde la raíz del sitio web
-        $ruta = $_SERVER['DOCUMENT_ROOT'] . "/apicreator/endpoints/$scheme";
+        $ruta = $_SERVER['DOCUMENT_ROOT'] . "/apicreator/endpoints/$userId/$scheme";
         
         // Creación
         if(isset($_FILES['script'])) {
@@ -88,16 +93,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
-            // Solo intentamos suir el fichero si se ha indicado alguno al crear/modificar
+            // Solo intentamos subir el fichero si se ha indicado alguno al crear/modificar
             if($scriptPath != "") {                
-                if (!move_uploaded_file($_FILES['script']['tmp_name'], "endpoints/$scheme/".$scriptPath)) {
+                if (!move_uploaded_file($_FILES['script']['tmp_name'], "endpoints/$userId/$scheme/".$scriptPath)) {
                     $error = "Error al subir el Script.";
                 }            
             }
         }
 
 
-        $endpoint = new Endpoint($url, $method, $inputMime, $outputMime, $scriptPath, $returnText, $scheme);
+        $endpoint = new Endpoint($url, $method, $inputMime, $outputMime, $scriptPath, $returnText, $scheme, $status);
         if($mode==$CREATE) { 
             $manager->saveEndpoint($endpoint);            
         } elseif($mode==$EDIT) { 
@@ -120,6 +125,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <style type="text/css">
     #endpoints-table {
         font-size: 12px;
+    }
+
+    .reducir {
+        --escala: 1;
+        transform: scale(var(--escala));
+        transform-origin: center center;
+    }
+
+    .flex {
+        display: flex;
     }
 </style>
 </head>
@@ -160,11 +175,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <option value="<?php echo $scheme['scheme'];?>" <?php echo ($scheme['scheme'] == $scheme ? "selected" : "")?>><?php echo $scheme['scheme'];?></option>
                     <?php } ?>
                 </select>
-            </div>            
+            </div>          
+
             <div class="mb-3">
                 <label for="url" class="form-label">URL del Endpoint:</label>
                 <input type="text" class="form-control" id="url" name="url" value="<?php echo (isset($url) ? $url : "" );?>" required>
             </div>
+
             <div class="mb-3">
                 <label for="method" class="form-label">Método:</label>
                 <select class="form-select" id="method" name="method" required>
@@ -181,6 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ?>
                 </select>
             </div>
+
             <div class="mb-3">
                 <label for="inputMime" class="form-label">MIME Type Entrada:</label>
                 <select class="form-select" id="inputMime" name="inputMime" required>
@@ -196,6 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <?php endforeach; ?>
                 </select>
             </div>
+
             <div class="mb-3">
                 <label for="outputMime" class="form-label">MIME Type Salida:</label>
                 <select class="form-select" id="outputMime" name="outputMime" required>
@@ -210,6 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <?php endforeach; ?>
                 </select>
             </div>
+                        
 
             <!-- Pestañas código/texto -->
             <ul class="nav nav-tabs" id="myTab" role="tablist">
@@ -221,6 +241,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
               <li class="nav-item" role="presentation">
                 <button class="nav-link" id="textarea-tab" data-bs-toggle="tab" data-bs-target="#textarea" type="button" role="tab" aria-controls="textarea" aria-selected="false">
                   Valor predefinido
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="status-tab" data-bs-toggle="tab" data-bs-target="#status-code" type="button" role="tab" aria-controls="status-code" aria-selected="false">
+                  Status predefinido
                 </button>
               </li>
             </ul>
@@ -238,6 +263,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="mb-3">
                   <label for="returntext" class="form-label">Texto a devolver:</label>
                   <textarea class="form-control" name="returntext" id="returntext" rows="4" placeholder="Escribe aquí..."><?php echo (isset($returnText) ? $returnText : "");?></textarea>
+                </div>
+              </div>
+              <div class="tab-pane fade" id="status-code" role="tabpanel" aria-labelledby="status-tab">
+                <div class="mb-3">
+                  <div class="mb-3">
+                      <label for="status" class="form-label">Código de Status</label>
+                      <select class="form-select" id="status" name="status">
+                        <option value="">Ninguno</option>
+                        <option value="200">200 OK</option>
+                        <option value="201">201 Created</option>
+                        <option value="204">204 No Content</option>
+                        <option value="400">400 Bad Request</option>
+                        <option value="401">401 Unauthorized</option>
+                        <option value="403">403 Forbidden</option>
+                        <option value="404">404 Not Found</option>
+                        <option value="409">409 Conflict</option>
+                        <option value="422">422 Unprocessable Entity</option>
+                        <option value="500">500 Internal Server Error</option>
+                        <option value="502">502 Bad Gateway</option>
+                        <option value="503">503 Service Unavailable</option>
+                      </select>
+                    </div>
                 </div>
               </div>
             </div>
@@ -267,14 +314,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <th>Método</th>
                     <th>Input MIME</th>
                     <th>Output MIME</th>
-                    <th>Script/Text</th>
+                    <th>Script/Text/Status</th>
                     <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                     <?php
                     foreach ($endpoints as $ep) {
-                        $title = htmlspecialchars($ep['return_text'], ENT_QUOTES, 'UTF-8');
+                        $title = "";
+
+                        if($ep['status']!="") {
+                            $title = "HTTP/1.1 $code {$mensajes[$ep['status']]}";
+                        } else if ($ep['return_text']!="") {
+                            $title = htmlspecialchars($ep['return_text'] ?? '', ENT_QUOTES, 'UTF-8');
+                        } else if ($ep['script']!="") {
+                            $title = $ep['script'];
+                        }
                     ?>
                     <tr>
                       <!-- Información de endpoint -->
@@ -283,11 +338,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                       <td><?php echo $ep['method'];?></td>
                       <td><?php echo $ep['input_mime'];?></td>
                       <td><?php echo $ep['output_mime'];?></td>
-                      <td title="<?php echo $title;?>"><?php echo $ep['script'];?></td>
+                      <td title="<?php echo $title;?>">
+                        <?php 
+                        if($ep['status']!="") {
+                            echo $ep['status'];
+                        } else if ($ep['return_text']!="") {
+                            echo 'Texto predefinido';
+                        } else if ($ep['script']!="") {
+                            echo 'script';
+                        }
+                        ?>
+                      </td>
                       <td>
                         <!-- Botones de acción -->
-                        <button id="editendpoint_<?php echo $ep['id'];?>" class="btn btn-primary btn-sm" data-id="<?php echo $ep['id'];?>">Editar</button>
-                        <button id="deleteendpoint_<?php echo $ep['id'];?>" class="btn btn-danger btn-sm" data-id="<?php echo $ep['id'];?>">Eliminar</button>
+                        <?php
+                        if(($ep['user_id']===$_SESSION['user_id']) || $_SESSION['admin_user'] === 1) {
+                            ?>
+                            <div class="flex">
+                                <button id="editendpoint_<?php echo $ep['id'];?>" class="btn btn-primary btn-sm reducir" style="--escala: 0.68;" data-id="<?php echo $ep['id'];?>">Editar</button>
+                                <button id="deleteendpoint_<?php echo $ep['id'];?>" class="btn btn-danger btn-sm reducir" style="--escala: 0.68;" data-id="<?php echo $ep['id'];?>">Eliminar</button>
+                            </div>
+                            <?php
+                        }                        
+                        ?>
                       </td>
                     </tr>
                     <?php
@@ -506,15 +579,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 selectOptionByValueOrText("inputMime", data.endpoint.input_mime);
                                 selectOptionByValueOrText("outputMime", data.endpoint.output_mime);
                                                                 
-                                document.getElementById('returntext').value = data.endpoint.return_text || '';
+                                if((data.endpoint.return_text || '') !="") {
+                                    document.getElementById('returntext').value = data.endpoint.return_text || '';
+                                    var tabTrigger = document.getElementById('textarea-tab');
+                                    var tab = new bootstrap.Tab(tabTrigger);
+                                    tab.show();
+                                }
+
+                                // Seleccionamos la pestaña status si tiene valor
+                                if(!isNaN(data.endpoint.status)) {
+                                    select2OrAddOption("status", data.endpoint.status);
+                                    var tabTrigger = document.getElementById('status-tab');
+                                    var tab = new bootstrap.Tab(tabTrigger);
+                                    tab.show();
+                                } else {
+                                    select2OrAddOption("status", "Ninguno");
+                                }
 
                                 select2OrAddOption("scheme", data.endpoint.scheme);
-
-                                // Asegúrate de que Bootstrap JS está cargado
-                                var tabTrigger = document.getElementById('textarea-tab');
-                                var tab = new bootstrap.Tab(tabTrigger);
-                                tab.show();
-
                                 showModifyZone();
 
                             } else {                                
@@ -536,7 +618,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     </script>
 
-    <?php include "./footer.html"; ?>
+    <?php include "./footer.php"; ?>
 
 </body>
 </html>

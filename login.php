@@ -7,37 +7,70 @@ require_once "./head.php";
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['user_key']) && isset($_POST['pwd_key']) ) {
 
     // Obtenemos los valores enviados desde el formulario
-    $userKey = $_POST['user_key'];
-    $pwdKey = $_POST['pwd_key'];
+    $userName = $_POST['user_key'];
+    $userPwd  = $_POST['pwd_key'];
+    $userPwd  = $salt.md5($userPwd);
 
     //try {        
         $pdoApiCreator = getDatabaseConnection($databaseFile);
 
-        // Consulta para verificar el valor del campo "user_key"
-        $stmt = $pdoApiCreator->prepare("SELECT data FROM parameters WHERE key = 'admin-user' AND data = ?");
-        $stmt->execute([$userKey]);
-        $userResult = $stmt->fetchColumn();
+        // Consulta para verificar los datos introducidos del usuario
+        $sql = "SELECT COUNT(*) FROM users WHERE name = :name AND password = :password";        
+        $stmt = $pdoApiCreator->prepare($sql);
+        $stmt->bindParam(':name', $userName, PDO::PARAM_STR);
+        $stmt->bindParam(':password', $userPwd, PDO::PARAM_STR);
+        $stmt->execute();
 
-        // Consulta para verificar el valor del campo "pwd_key"
-        $stmt = $pdoApiCreator->prepare("SELECT data FROM parameters WHERE key = 'admin-password' AND data = ?");
-        $hashedPwdKey = $salt.md5($pwdKey); // Generar el hash MD5 del valor ingresado
-        $stmt->execute([$hashedPwdKey]);
-        $pwdResult = $stmt->fetchColumn();
+        $exists = $stmt->fetchColumn() > 0;
 
-        // Validar si ambos valores coinciden
-        if ($userResult>0 && $pwdResult>0) {
+        // Se valida si el usuario y clave existen
+        if ($exists) {
+
+            // Vemos si el usuario es de tipo ADMIN
+            $sql = "SELECT id, is_admin FROM users WHERE name = :name AND password = :password";
+            $stmt = $pdoApiCreator->prepare($sql);
+            $stmt->bindParam(':name', $userName, PDO::PARAM_STR);
+            $stmt->bindParam(':password', $userPwd, PDO::PARAM_STR);
+            $stmt->execute();
+
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            $userId = intval($user['id']);
+            $isAdmin = intval($user['is_admin']);
+
+            $_SESSION['admin_user'] = 0;
+            if ($isAdmin === 1) {
+                $_SESSION['admin_user'] = $isAdmin; // Indicamos que el usuario logado es de tipo Admin
+            }
+
+            // Incrementamos el valor del LOGIN_OK y la fecha de acceso
+            $now = date('Y-m-d H:i:s');  // formato compatible con SQLite
+            $sql = "UPDATE users SET login_ok = login_ok + 1, last_access = :actual_date WHERE id = :id";
+            $stmt = $pdoApiCreator->prepare($sql);
+            $stmt->bindParam(':actual_date', $now, PDO::PARAM_STR);
+            $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+
             // Crear la variable de sesión y redirigir al usuario
             $_SESSION['api_creator_user_session'] = 'OK';
             $_SESSION['message'] = '¡Bienvenido!';
+            $_SESSION['user_id'] = $userId;
+
             header('Location: endpointManager.php');
             exit();
         } else {
+            // Incrementamos el valor del LOGIN_KO
+            $sql = "UPDATE users SET login_ok = login_ko + 1 WHERE id = :id";
+            $stmt = $pdoApiCreator->prepare($sql);
+            $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+
             // Redirigir a login.php si los valores no coinciden
             $_SESSION['message'] = "¿Te has equivocado?";            
-            //header('Location: index.php');
-            //exit();
+            header('Location: index.php');
+            exit();
         }
 
+        //closeStmt($stmt);
         closeConnection($pdoApiCreator);
 
     //} catch (PDOException $e) {
@@ -50,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['user_key']) && isset($
 } else {
 
     if (!isset($_SESSION['api_creator_user_session'])) 
-        if(!isset($_SESSION['api_creator_user_session']))
         {
         ?>
     <!DOCTYPE html>
@@ -95,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['user_key']) && isset($
         <button type="submit" class="btn btn-primary">Enviar</button>
     </form>
 
-    <?php include "./footer.html"; ?>
+    <?php include "./footer.php"; ?>
     
     </body>
     </html>

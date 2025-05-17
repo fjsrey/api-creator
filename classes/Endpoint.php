@@ -8,7 +8,7 @@ class Endpoint {
     public $return_text;
     public $scheme;
 
-    public function __construct($url, $method, $input_mime, $output_mime, $script, $return_text, $scheme) {
+    public function __construct($url, $method, $input_mime, $output_mime, $script, $return_text, $scheme, $status) {
         $this->url = $url;
         $this->method = $method;
         $this->input_mime = $input_mime;
@@ -16,6 +16,7 @@ class Endpoint {
         $this->script = $script;
         $this->return_text = $return_text;
         $this->scheme = $scheme;
+        $this->status = $status;
     }
 
     // Getters
@@ -47,6 +48,14 @@ class Endpoint {
         return $this->scheme;
     }
 
+    public function getStatus() {
+        if (is_numeric($this->status)) {
+            return (int)$this->status;
+        } else {
+            return null;
+        }
+    }
+
     // Setters
     public function setUrl($url) {
         $this->url = $url;
@@ -76,8 +85,17 @@ class Endpoint {
         $this->scheme = $scheme;
     }
 
+    public function setStatus($status) {
+        if (is_numeric($status)) {
+            $this->status = (int)$status;
+        } else {
+            $this->status = null;
+        }
+
+    }
+
     public function __toString() {
-        return "URL: $this->url, Método: $this->method, Entrada: $this->input_mime, Salida: $this->output_mime, Script: $this->script, Valor predefinido: $this->return_text, Esquema: $this->scheme";
+        return "URL: $this->url, Método: $this->method, Entrada: $this->input_mime, Salida: $this->output_mime, Script: $this->script, Valor predefinido: $this->return_text, Esquema: $this->scheme, Status: $this->status";
     }
 }
 ?>

@@ -1,0 +1,13 @@
+2025-04-21 v0.51 beta
+- Primera versión pública
+
+2025-xx-xx v0.70 beta
+- Fix null usado en htmlspecialchars.
+- Fix para enviar el status 200 en la respuesta predefinida.
+- Se permiten múltiples usuarios y no solo uno.
+- Soporte para carpetas separadas de usuario.
+- Añadida posibilidad de crear un PDF con respuesta predefinida.
+- Soporte parta configurar status predefinido en la respuesta.
+- Añadido eliminación de mensaje de confirmación en creación o actualización de 
+  forma automática.
+- Añadida migración automática de endpoints y Base de datos entre versiones.
